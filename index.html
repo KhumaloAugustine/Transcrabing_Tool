@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="Lalela — isiZulu interview transcription and qualitative analysis workspace." />
+  <title>Lalela | IsiZulu transcription workspace</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Newsreader:opsz,wght@6..72,500;6..72,600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css" />
+</head>
+<body>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <a class="brand" href="#" aria-label="Lalela home">
+        <span class="brand-mark" aria-hidden="true"><i></i><i></i><i></i><i></i></span>
+        <span>Lalela</span>
+      </a>
+
+      <nav class="main-nav" aria-label="Main navigation">
+        <button class="nav-item active" data-view="workspace"><span class="icon">⌂</span> Workspace</button>
+        <button class="nav-item" data-view="analysis"><span class="icon">◫</span> Analysis</button>
+        <button class="nav-item" data-view="exports"><span class="icon">⇩</span> Exports</button>
+      </nav>
+
+      <div class="project-section">
+        <div class="section-label"><span>Current project</span><button title="Project options">•••</button></div>
+        <div class="project-card">
+          <span class="project-icon">MP</span>
+          <div><strong>Medical pluralism study</strong><small id="projectCount">0 interviews · isiZulu</small></div>
+        </div>
+      </div>
+
+      <div class="sidebar-footer">
+        <div class="privacy-note"><span>✓</span><p><strong>Research data protected</strong><small>Files stay in this browser demo.</small></p></div>
+        <button class="user-card"><span>AK</span><p><strong>Augustine K.</strong><small>Researcher</small></p><b>⌄</b></button>
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <button class="mobile-menu" aria-label="Open menu">☰</button>
+        <div class="breadcrumbs"><span>Projects</span><b>/</b><strong>Medical pluralism study</strong></div>
+        <div class="top-actions">
+          <button class="ghost-btn" id="exportBtn">Export</button>
+          <button class="primary-btn" id="uploadBtn">＋ Upload recordings</button>
+          <input type="file" id="fileInput" accept="audio/*" multiple hidden />
+        </div>
+      </header>
+
+      <section id="workspaceView" class="view active">
+        <div class="page-heading">
+          <div><p class="eyebrow">TRANSCRIPTION WORKSPACE</p><h1>Interviews</h1><p>Turn isiZulu conversations into clear, research-ready insight.</p></div>
+          <div class="progress-card"><span class="ring"><b id="reviewedCount">0</b><small id="totalCount">/ 0</small></span><p><strong>Transcripts reviewed</strong><small id="attentionCount">No recordings uploaded</small></p></div>
+        </div>
+
+        <div class="workspace-grid">
+          <section class="recording-panel">
+            <div class="panel-head"><div><h2>Recordings</h2><span id="recordingCount">0 files</span></div><button class="icon-btn" id="smallUpload" title="Add recordings">＋</button></div>
+            <div class="search-wrap"><span>⌕</span><input id="searchInput" placeholder="Search recordings" /></div>
+            <div class="filter-row"><button class="filter active" data-filter="all">All <span id="allCount">0</span></button><button class="filter" data-filter="review">Needs review <span id="needsCount">0</span></button></div>
+            <div id="recordingList" class="recording-list"></div>
+          </section>
+
+          <section class="editor-panel">
+            <div class="editor-head">
+              <div><div class="title-line"><h2 id="editorTitle">Choose a recording</h2><span class="status-chip review" id="editorStatus">Not started</span></div><p id="editorMeta">Upload one or more interviews to begin</p></div>
+              <button class="more-btn">•••</button>
+            </div>
+
+            <div class="audio-player">
+              <button id="playBtn" class="play-btn" aria-label="Play recording" disabled>▶</button>
+              <div class="audio-main">
+                <div class="time-row"><span id="currentTime">00:00</span><div class="waveform" id="waveform" aria-label="Audio timeline"></div><span id="duration">38:24</span></div>
+                <input id="seekBar" type="range" min="0" max="100" value="0" aria-label="Seek audio" />
+              </div>
+              <button id="speedBtn" class="speed-btn">1×</button>
+              <audio id="audioElement"></audio>
+            </div>
+
+            <div class="language-tabs" role="tablist">
+              <button class="lang-tab active" data-lang="zulu"><span>isiZulu</span><small>Original transcript</small><b id="zuluState">Not started</b></button>
+              <button class="lang-tab" data-lang="english"><span>English</span><small>Translation</small><b id="englishState">Generate</b></button>
+            </div>
+
+            <div class="transcript-toolbar">
+              <span id="transcriptHint">Click any paragraph to edit · changes save automatically</span>
+              <div><button class="tool-btn" id="undoBtn" title="Undo">↶</button><button class="tool-btn" id="findBtn" title="Find">⌕</button><button class="secondary-btn" id="transcribeBtn">✦ Transcribe isiZulu</button><button class="secondary-btn" id="generateBtn">✦ Generate English</button></div>
+            </div>
+
+            <div id="transcript" class="transcript" aria-live="polite"></div>
+            <div class="editor-footer"><span><i></i> Saved just now</span><button id="markReviewed">✓ Mark as reviewed</button></div>
+          </section>
+        </div>
+      </section>
+
+      <section id="analysisView" class="view">
+        <div class="page-heading analysis-heading"><div><p class="eyebrow">QUALITATIVE ANALYSIS</p><h1>Framework analysis</h1><p>Connect participants’ accounts to your research methodology.</p></div><button class="primary-btn" id="runAnalysis">✦ Analyse reviewed transcripts</button></div>
+        <div class="analysis-summary"><div><small>TRANSCRIPTS INCLUDED</small><strong id="analysisIncluded">0</strong><span>Reviewed interviews only</span></div><div><small>CODED PASSAGES</small><strong id="codedCount">0</strong><span>Across both frameworks</span></div><div><small>EMERGING THEMES</small><strong id="themeCount">0</strong><span>Ready for researcher review</span></div></div>
+        <div class="framework-grid">
+          <article class="framework-card terracotta"><div class="framework-title"><span>MP</span><div><small>FRAMEWORK 01</small><h2>Medical Pluralism</h2></div></div><p>Explore how participants navigate and combine biomedical, traditional and spiritual systems of care.</p><div class="theme-list" id="medicalThemes"><div class="empty-transcript">Run analysis after reviewing transcripts.</div></div></article>
+          <article class="framework-card green"><div class="framework-title"><span>HB</span><div><small>FRAMEWORK 02</small><h2>Health Belief Model</h2></div></div><p>Understand health decisions through perceived risk, severity, benefits, barriers and cues to action.</p><div class="theme-list" id="healthThemes"><div class="empty-transcript">Run analysis after reviewing transcripts.</div></div></article>
+        </div>
+        <div class="research-note"><span>i</span><p><strong>Researcher interpretation remains central</strong><small>AI suggestions are starting points. Verify every theme against the isiZulu audio and transcript before including it in findings.</small></p></div>
+      </section>
+
+      <section id="exportsView" class="view empty-view"><span>⇩</span><h1>Export your research</h1><p>Download reviewed transcripts and coded analysis.</p><div><button class="secondary-btn export-option" data-type="txt">Transcript (.txt)</button><button class="secondary-btn export-option" data-type="csv">Analysis codes (.csv)</button></div></section>
+    </main>
+  </div>
+
+  <div id="toast" role="status"></div>
+  <script src="app.js"></script>
+</body>
+</html>
