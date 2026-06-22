@@ -79,3 +79,13 @@ npx wrangler deploy
 ```
 
 Cloudflare Workers AI operates without an OpenAI key. To use OpenAI as an optional provider, run `npx wrangler secret put OPENAI_API_KEY`. Never place that key inside `wrangler.jsonc`, `.env.example`, Git, or Cloudflare static asset variables.
+
+### Higher-quality isiZulu audio transcription
+
+The hosted Worker supports Gemini direct-audio transcription as its preferred engine when a Gemini key is configured. It uploads the recording to the temporary Gemini Files API, requests a verbatim timestamped isiZulu transcript, and deletes the temporary Gemini file after processing. Configure it securely with:
+
+```powershell
+npx wrangler secret put GEMINI_API_KEY
+```
+
+The interface then offers **Re-transcribe** and displays which AI provider generated the transcript. Existing transcripts are replaced only after explicit confirmation. Never commit the Gemini key to Git.

@@ -52,6 +52,48 @@ async function openAI(env, path, options) {
   try { return JSON.parse(text); } catch { throw new HttpError(502, "AI provider returned an invalid response"); }
 }
 
+const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
+
+async function geminiRequest(env, path, options = {}) {
+  if (!env.GEMINI_API_KEY) throw new HttpError(503, "GEMINI_API_KEY is not configured as a Worker secret");
+  const separator=path.includes("?")?"&":"?";
+  const response=await fetch(`https://generativelanguage.googleapis.com${path}${separator}key=${encodeURIComponent(env.GEMINI_API_KEY)}`,options);
+  const text=await response.text();
+  if(!response.ok) throw new HttpError(502,`Gemini provider error: ${text.slice(0,500)}`);
+  try{return JSON.parse(text)}catch{return text}
+}
+
+async function uploadGeminiFile(env,item,audioBuffer){
+  const mime=extensionOf(item.original_name)==="m4a"?"audio/aac":item.content_type;
+  const start=await fetch(`https://generativelanguage.googleapis.com/upload/v1beta/files?key=${encodeURIComponent(env.GEMINI_API_KEY)}`,{
+    method:"POST",headers:{"content-type":"application/json","x-goog-upload-protocol":"resumable","x-goog-upload-command":"start","x-goog-upload-header-content-length":String(audioBuffer.byteLength),"x-goog-upload-header-content-type":mime},body:JSON.stringify({file:{display_name:item.original_name}})
+  });
+  if(!start.ok)throw new HttpError(502,`Gemini upload error: ${(await start.text()).slice(0,500)}`);
+  const uploadUrl=start.headers.get("x-goog-upload-url");
+  if(!uploadUrl)throw new HttpError(502,"Gemini did not return an upload URL");
+  const finish=await fetch(uploadUrl,{method:"POST",headers:{"content-length":String(audioBuffer.byteLength),"x-goog-upload-offset":"0","x-goog-upload-command":"upload, finalize"},body:audioBuffer});
+  if(!finish.ok)throw new HttpError(502,`Gemini upload error: ${(await finish.text()).slice(0,500)}`);
+  let file=(await finish.json()).file;
+  for(let attempt=0;file?.state==="PROCESSING"&&attempt<30;attempt++){
+    await sleep(2000);file=await geminiRequest(env,`/v1beta/${file.name}`);
+  }
+  if(!file||file.state==="FAILED")throw new HttpError(502,"Gemini could not process this audio format");
+  return {...file,mime};
+}
+
+async function transcribeWithGemini(env,item,audioBuffer){
+  const file=await uploadGeminiFile(env,item,audioBuffer);
+  const schema={type:"object",properties:{segments:{type:"array",items:{type:"object",properties:{start:{type:"number"},end:{type:"number"},speaker:{type:"string"},text:{type:"string"}},required:["start","end","speaker","text"]}}},required:["segments"]};
+  const prompt="Transcribe this South African research interview verbatim in isiZulu. Do not translate, summarise, correct grammar, or invent inaudible speech. Preserve names, code-switching, medical terminology, traditional-health terms, repetitions and uncertainty. Separate speaker turns, label speakers consistently as Umcwaningi, Umhlanganyeli, or Isikhulumi N when identity is uncertain, and provide accurate start/end times in seconds.";
+  try{
+    const result=await geminiRequest(env,`/v1beta/models/${env.GEMINI_MODEL||"gemini-3.5-flash"}:generateContent`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt},{file_data:{mime_type:file.mime,file_uri:file.uri}}]}],generationConfig:{temperature:0,responseMimeType:"application/json",responseJsonSchema:schema}})});
+    const text=result.candidates?.[0]?.content?.parts?.map(part=>part.text||"").join("")||"";
+    const parsed=JSON.parse(text);return parsed.segments||[];
+  }finally{
+    try{await geminiRequest(env,`/v1beta/${file.name}`,{method:"DELETE"})}catch(cause){console.warn("Gemini temporary-file cleanup failed",cause.message)}
+  }
+}
+
 async function structuredCompletion(env, system, payload, name, schema) {
   if (!env.OPENAI_API_KEY) {
     const model=env.CLOUDFLARE_LLM_MODEL || "@cf/meta/llama-3.3-70b-instruct-fp8-fast";
@@ -142,8 +184,11 @@ async function transcribe(env, item) {
   if (env.OPENAI_API_KEY && object.size > 25 * 1024 * 1024) throw new HttpError(413, "The recording is stored successfully, but the configured OpenAI transcription endpoint accepts a maximum of 25 MB per request. Compress it as M4A/MP3 or split it into smaller recordings.");
   if (!env.OPENAI_API_KEY && object.size > 70 * 1024 * 1024) throw new HttpError(413, "The recording is stored successfully, but it is too large for safe in-memory Cloudflare AI processing. Compress it as M4A/MP3 or split it into smaller recordings.");
   const audioBuffer = await object.arrayBuffer();
-  let result;
-  if (env.OPENAI_API_KEY) {
+  let result,provider;
+  if(env.GEMINI_API_KEY){
+    const geminiSegments=await transcribeWithGemini(env,item,audioBuffer);
+    result={segments:geminiSegments};provider=`Gemini ${env.GEMINI_MODEL||"gemini-3.5-flash"}`;
+  } else if (env.OPENAI_API_KEY) {
     const form = new FormData();
     form.append("file", new File([audioBuffer], item.original_name, { type: item.content_type }));
     form.append("model", env.TRANSCRIPTION_MODEL || "gpt-4o-transcribe-diarize");
@@ -151,12 +196,12 @@ async function transcribe(env, item) {
     form.append("response_format", "diarized_json");
     form.append("chunking_strategy", "auto");
     form.append("prompt", "This is a South African research interview in formal isiZulu. Preserve isiZulu wording, names, clinical terms and traditional-health terminology. Do not translate.");
-    result = await openAI(env, "/audio/transcriptions", { method: "POST", body: form });
+    result = await openAI(env, "/audio/transcriptions", { method: "POST", body: form });provider=env.TRANSCRIPTION_MODEL||"gpt-4o-transcribe-diarize";
   } else {
     result = await env.AI.run(env.CLOUDFLARE_TRANSCRIPTION_MODEL || "@cf/openai/whisper-large-v3-turbo", {
       audio: Buffer.from(audioBuffer).toString("base64"), task: "transcribe", vad_filter: true,
       initial_prompt: "Ingxoxo yocwaningo ngesiZulu esemthethweni ngezempilo, ukwelashwa kwasesibhedlela, imithi yesintu nezangoma."
-    });
+    });provider=env.CLOUDFLARE_TRANSCRIPTION_MODEL||"Cloudflare Whisper";
   }
   const raw = result.segments || (result.text ? [{ start: 0, end: 0, speaker: "Isikhulumi", text: result.text }] : []);
   const segments = raw.filter(s => String(s.text || "").trim()).map(s => ({
@@ -164,8 +209,8 @@ async function transcribe(env, item) {
     speaker: s.speaker || "Isikhulumi", text: String(s.text).trim()
   }));
   const duration = segments.reduce((max, s) => Math.max(max, s.end), 0);
-  await env.DB.prepare("UPDATE interviews SET zulu_segments=?,duration=?,status='needs_review' WHERE id=?")
-    .bind(JSON.stringify(segments), duration, item.id).run();
+  await env.DB.prepare("UPDATE interviews SET zulu_segments=?,duration=?,status='needs_review',transcription_provider=? WHERE id=?")
+    .bind(JSON.stringify(segments), duration, provider, item.id).run();
   return json(await getInterview(env, item.id));
 }
 
@@ -266,7 +311,7 @@ async function analyse(env) {
 
 async function route(request, env) {
   const url = new URL(request.url), path = url.pathname;
-  if (path === "/api/health" && request.method === "GET") return json({ ok: true, ai_configured: Boolean(env.OPENAI_API_KEY || env.AI), ai_provider: env.OPENAI_API_KEY ? "openai" : "cloudflare-workers-ai", platform: "cloudflare" });
+  if (path === "/api/health" && request.method === "GET") return json({ ok: true, ai_configured: Boolean(env.GEMINI_API_KEY||env.OPENAI_API_KEY||env.AI), ai_provider: env.GEMINI_API_KEY?"gemini":env.OPENAI_API_KEY?"openai":"cloudflare-workers-ai", platform: "cloudflare" });
   if (path === "/api/interviews" && request.method === "GET") return listInterviews(env);
   if (path === "/api/interviews" && request.method === "POST") return uploadInterview(request, env);
   if (path === "/api/analysis" && request.method === "POST") return analyse(env);

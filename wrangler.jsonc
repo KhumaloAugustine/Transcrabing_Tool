@@ -32,6 +32,7 @@
     "TRANSCRIPTION_MODEL": "gpt-4o-transcribe-diarize",
     "LLM_MODEL": "gpt-4.1-mini",
     "CLOUDFLARE_TRANSCRIPTION_MODEL": "@cf/openai/whisper-large-v3-turbo",
-    "CLOUDFLARE_LLM_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
+    "CLOUDFLARE_LLM_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast",
+    "GEMINI_MODEL": "gemini-3.5-flash"
   }
 }
