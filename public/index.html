@@ -45,7 +45,8 @@
         <div class="top-actions">
           <button class="ghost-btn" id="exportBtn">Export</button>
           <button class="primary-btn" id="uploadBtn">＋ Upload recordings</button>
-          <input type="file" id="fileInput" accept="audio/*" multiple hidden />
+          <input type="file" id="fileInput" accept="audio/*,video/mp4,.m4a,.mp3,.mp4,.mpeg,.mpga,.wav,.webm,.aac,.flac,.ogg,.oga,.opus,.wma,.amr,.3gp,.aiff,.aif,.caf,.mka" multiple hidden />
+          <input type="file" id="transcriptInput" accept=".txt,.srt,.vtt,.csv,.json,text/plain,text/vtt,text/csv,application/json" hidden />
         </div>
       </header>
 
@@ -66,7 +67,7 @@
           <section class="editor-panel">
             <div class="editor-head">
               <div><div class="title-line"><h2 id="editorTitle">Choose a recording</h2><span class="status-chip review" id="editorStatus">Not started</span></div><p id="editorMeta">Upload one or more interviews to begin</p></div>
-              <button class="more-btn">•••</button>
+              <button class="more-btn" id="deleteBtn" title="Delete interview">•••</button>
             </div>
 
             <div class="audio-player">
@@ -86,7 +87,7 @@
 
             <div class="transcript-toolbar">
               <span id="transcriptHint">Click any paragraph to edit · changes save automatically</span>
-              <div><button class="tool-btn" id="undoBtn" title="Undo">↶</button><button class="tool-btn" id="findBtn" title="Find">⌕</button><button class="secondary-btn" id="transcribeBtn">✦ Transcribe isiZulu</button><button class="secondary-btn" id="generateBtn">✦ Generate English</button></div>
+              <div><button class="tool-btn" id="undoBtn" title="Undo">↶</button><button class="tool-btn" id="findBtn" title="Find">⌕</button><button class="secondary-btn" id="importTranscriptBtn">↑ Import transcript</button><button class="secondary-btn" id="transcribeBtn">✦ Transcribe isiZulu</button><button class="secondary-btn" id="generateBtn">✦ Generate English</button></div>
             </div>
 
             <div id="transcript" class="transcript" aria-live="polite"></div>

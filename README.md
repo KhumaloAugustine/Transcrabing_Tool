@@ -53,9 +53,12 @@ The repository also includes a Cloudflare-native backend under `worker/`. It rep
 - Workers for the API and frontend
 - D1 for interview metadata and transcripts
 - Private R2 storage for recordings
-- A Worker secret for the model API key
+- Cloudflare Workers AI for hosted transcription, translation and analysis
+- An optional Worker secret for the OpenAI provider
 
-The starter Cloudflare upload route intentionally limits each recording to 25 MB. Larger field recordings require an audio chunking pipeline before transcription.
+The hosted application accepts common recorder formats including M4A, MP3, MP4, MPEG, MPGA, WAV, WEBM, AAC, FLAC, OGG, OPUS, WMA, AMR, 3GP, AIFF, CAF and MKA for private storage. Direct model transcription currently supports MP3, MP4, MPEG, MPGA, M4A, WAV and WEBM. Cloudflare AI recordings can be up to 70 MB; uploads are capped at 95 MB.
+
+Existing isiZulu transcripts can be attached to a recording in TXT, SRT, VTT, CSV or JSON format. Imported and generated transcripts both enter the same mandatory review workflow.
 
 ### First deployment
 
@@ -68,12 +71,11 @@ npx wrangler d1 create lalela-db
 npx wrangler r2 bucket create lalela-recordings
 ```
 
-Copy the D1 `database_id` returned by Cloudflare into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`. Then initialise the remote database, store the key securely, and deploy:
+Copy the D1 `database_id` returned by Cloudflare into `wrangler.jsonc`. Then initialise the remote database and deploy:
 
 ```powershell
 npx wrangler d1 migrations apply lalela-db --remote
-npx wrangler secret put OPENAI_API_KEY
 npx wrangler deploy
 ```
 
-Do not put the API key inside `wrangler.jsonc`, `.env.example`, Git, or Cloudflare static asset variables.
+Cloudflare Workers AI operates without an OpenAI key. To use OpenAI as an optional provider, run `npx wrangler secret put OPENAI_API_KEY`. Never place that key inside `wrangler.jsonc`, `.env.example`, Git, or Cloudflare static asset variables.

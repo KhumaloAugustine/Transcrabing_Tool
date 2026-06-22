@@ -3,6 +3,7 @@
   "name": "lalela-transcription",
   "main": "worker/index.js",
   "compatibility_date": "2026-06-01",
+  "compatibility_flags": ["nodejs_compat"],
   "workers_dev": true,
   "preview_urls": true,
   "assets": {
@@ -24,8 +25,13 @@
       "bucket_name": "lalela-recordings"
     }
   ],
+  "ai": {
+    "binding": "AI"
+  },
   "vars": {
     "TRANSCRIPTION_MODEL": "gpt-4o-transcribe-diarize",
-    "LLM_MODEL": "gpt-4.1-mini"
+    "LLM_MODEL": "gpt-4.1-mini",
+    "CLOUDFLARE_TRANSCRIPTION_MODEL": "@cf/openai/whisper-large-v3-turbo",
+    "CLOUDFLARE_LLM_MODEL": "@cf/meta/llama-3.3-70b-instruct-fp8-fast"
   }
 }
