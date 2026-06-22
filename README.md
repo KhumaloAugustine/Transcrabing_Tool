@@ -82,7 +82,7 @@ Cloudflare Workers AI operates without an OpenAI key. To use OpenAI as an option
 
 ### Higher-quality isiZulu audio transcription
 
-The hosted Worker supports Gemini direct-audio transcription as its preferred engine when a Gemini key is configured. It uploads the recording to the temporary Gemini Files API, requests a verbatim timestamped isiZulu transcript, and deletes the temporary Gemini file after processing. Configure it securely with:
+The hosted Worker supports Gemini direct-audio transcription as its preferred engine when a Gemini key is configured. It uploads the recording to the temporary Gemini Files API, processes the interview in overlapping five-minute windows to avoid truncated output and language drift, merges timestamped isiZulu-only segments, and deletes the temporary Gemini file after processing. Configure it securely with:
 
 ```powershell
 npx wrangler secret put GEMINI_API_KEY

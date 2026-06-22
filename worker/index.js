@@ -84,11 +84,29 @@ async function uploadGeminiFile(env,item,audioBuffer){
 async function transcribeWithGemini(env,item,audioBuffer){
   const file=await uploadGeminiFile(env,item,audioBuffer);
   const schema={type:"object",properties:{segments:{type:"array",items:{type:"object",properties:{start:{type:"number"},end:{type:"number"},speaker:{type:"string"},text:{type:"string"}},required:["start","end","speaker","text"]}}},required:["segments"]};
-  const prompt="Transcribe this South African research interview verbatim in isiZulu. Do not translate, summarise, correct grammar, or invent inaudible speech. Preserve names, code-switching, medical terminology, traditional-health terms, repetitions and uncertainty. Separate speaker turns, label speakers consistently as Umcwaningi, Umhlanganyeli, or Isikhulumi N when identity is uncertain, and provide accurate start/end times in seconds.";
+  const metadataDuration=parseFloat(String(file.videoMetadata?.videoDuration||"").replace(/s$/,""))||0;
+  const duration=Number(item.duration)||metadataDuration||7200;
+  const windowSeconds=300,overlapSeconds=5,all=[];
   try{
-    const result=await geminiRequest(env,`/v1beta/models/${env.GEMINI_MODEL||"gemini-3.5-flash"}:generateContent`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{parts:[{text:prompt},{file_data:{mime_type:file.mime,file_uri:file.uri}}]}],generationConfig:{temperature:0,responseMimeType:"application/json",responseJsonSchema:schema}})});
-    const text=result.candidates?.[0]?.content?.parts?.map(part=>part.text||"").join("")||"";
-    const parsed=JSON.parse(text);return parsed.segments||[];
+    for(let windowStart=0,emptyWindows=0;windowStart<duration;windowStart+=windowSeconds-overlapSeconds){
+      const windowEnd=Math.min(windowStart+windowSeconds,duration);
+      const prompt=`Transcribe ONLY the audio interval from ${windowStart.toFixed(1)} to ${windowEnd.toFixed(1)} seconds. Ignore everything outside that interval. The interview is spoken in isiZulu. Write the exact spoken isiZulu words; NEVER translate isiZulu into English and NEVER paraphrase. Preserve a word in English only when the speaker actually says that word in English. Preserve names, medical and traditional-health terms, repetitions, false starts and uncertainty. Use absolute timestamps in seconds from the beginning of the complete recording. Separate speaker turns and label them consistently as Umcwaningi, Umhlanganyeli, or Isikhulumi N. Return no summary, commentary, introduction or conclusion.`;
+      const result=await geminiRequest(env,`/v1beta/models/${env.GEMINI_MODEL||"gemini-3.5-flash"}:generateContent`,{method:"POST",headers:{"content-type":"application/json"},body:JSON.stringify({contents:[{parts:[{file_data:{mime_type:file.mime,file_uri:file.uri}},{text:prompt}]}],generationConfig:{temperature:0,maxOutputTokens:8192,responseMimeType:"application/json",responseJsonSchema:schema}})});
+      const text=result.candidates?.[0]?.content?.parts?.map(part=>part.text||"").join("")||"";
+      const parsed=text?JSON.parse(text):{segments:[]};
+      const rows=(parsed.segments||[]).map(s=>{
+        let start=Number(s.start)||0,end=Number(s.end)||start;
+        if(windowStart>0&&start<windowStart-overlapSeconds&&start<=windowSeconds+overlapSeconds){start+=windowStart;end+=windowStart}
+        return {start,end,speaker:String(s.speaker||"Isikhulumi"),text:String(s.text||"").trim()};
+      }).filter(s=>s.text&&s.start>=windowStart-overlapSeconds&&s.start<=windowEnd+overlapSeconds);
+      if(!rows.length){emptyWindows++;if(!item.duration&&emptyWindows>=2)break}else emptyWindows=0;
+      for(const row of rows){
+        const duplicate=all.some(existing=>Math.abs(existing.start-row.start)<1.5&&existing.text.toLowerCase()===row.text.toLowerCase());
+        if(!duplicate)all.push(row);
+      }
+      if(windowEnd>=duration)break;
+    }
+    return all.sort((a,b)=>a.start-b.start);
   }finally{
     try{await geminiRequest(env,`/v1beta/${file.name}`,{method:"DELETE"})}catch(cause){console.warn("Gemini temporary-file cleanup failed",cause.message)}
   }
@@ -138,10 +156,11 @@ async function uploadInterview(request, env) {
   const contentType = inferredType(audio.name, audio.type);
   await env.RECORDINGS.put(storedName, audio.stream(), { httpMetadata: { contentType }, customMetadata: { originalName: audio.name } });
   const title = String(form.get("title") || audio.name.replace(/\.[^.]+$/, "")).trim();
+  const duration=Math.max(0,Number(form.get("duration"))||0);
   const createdAt = new Date().toISOString();
   try {
-    await env.DB.prepare("INSERT INTO interviews (id,title,original_name,stored_name,content_type,created_at) VALUES (?,?,?,?,?,?)")
-      .bind(id, title, audio.name, storedName, contentType, createdAt).run();
+    await env.DB.prepare("INSERT INTO interviews (id,title,original_name,stored_name,content_type,created_at,duration) VALUES (?,?,?,?,?,?,?)")
+      .bind(id, title, audio.name, storedName, contentType, createdAt,duration).run();
   } catch (cause) {
     await env.RECORDINGS.delete(storedName);
     throw cause;
