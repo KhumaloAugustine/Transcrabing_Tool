@@ -45,3 +45,35 @@ python -m uvicorn server:app --reload --port 8091
 Recordings and the SQLite database are stored under `data/`, which is excluded from Git. This is suitable for local development, not yet for a deployed research system. Before handling participant data in production, add authentication, role-based access, encryption at rest, backups, audit logs, retention/deletion controls, consent records, antivirus scanning, database migrations and institutional ethics/POPIA review.
 
 The AI analysis is deliberately framed as researcher-support. It does not invent findings and should never replace isiZulu-speaking human review or methodological interpretation.
+
+## Cloudflare deployment
+
+The repository also includes a Cloudflare-native backend under `worker/`. It replaces Python/FastAPI in the hosted environment with:
+
+- Workers for the API and frontend
+- D1 for interview metadata and transcripts
+- Private R2 storage for recordings
+- A Worker secret for the model API key
+
+The starter Cloudflare upload route intentionally limits each recording to 25 MB. Larger field recordings require an audio chunking pipeline before transcription.
+
+### First deployment
+
+After signing in to a Cloudflare account, run:
+
+```powershell
+npm install
+npx wrangler login
+npx wrangler d1 create lalela-db
+npx wrangler r2 bucket create lalela-recordings
+```
+
+Copy the D1 `database_id` returned by Cloudflare into `wrangler.jsonc`, replacing `REPLACE_WITH_D1_DATABASE_ID`. Then initialise the remote database, store the key securely, and deploy:
+
+```powershell
+npx wrangler d1 migrations apply lalela-db --remote
+npx wrangler secret put OPENAI_API_KEY
+npx wrangler deploy
+```
+
+Do not put the API key inside `wrangler.jsonc`, `.env.example`, Git, or Cloudflare static asset variables.

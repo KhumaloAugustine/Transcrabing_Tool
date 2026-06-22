@@ -13,6 +13,7 @@ from pydantic import BaseModel
 
 load_dotenv()
 ROOT = Path(__file__).parent.resolve()
+PUBLIC = ROOT / "public"
 DATA = ROOT / "data"
 UPLOADS = DATA / "uploads"
 DB = DATA / "lalela.db"
@@ -217,14 +218,14 @@ async def analyse():
 
 @app.get("/", include_in_schema=False)
 def frontend():
-    return FileResponse(ROOT / "index.html", media_type="text/html")
+    return FileResponse(PUBLIC / "index.html", media_type="text/html")
 
 
 @app.get("/styles.css", include_in_schema=False)
 def frontend_styles():
-    return FileResponse(ROOT / "styles.css", media_type="text/css")
+    return FileResponse(PUBLIC / "styles.css", media_type="text/css")
 
 
 @app.get("/app.js", include_in_schema=False)
 def frontend_script():
-    return FileResponse(ROOT / "app.js", media_type="text/javascript")
+    return FileResponse(PUBLIC / "app.js", media_type="text/javascript")

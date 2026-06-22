@@ -2,4 +2,7 @@
 .venv/
 __pycache__/
 data/
-
+node_modules/
+.wrangler/
+.wrangler-build/
+.wrangler-config/
